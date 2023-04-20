@@ -1,0 +1,32 @@
+---
+title: "STAT 131 Final Project"
+author: "Mina Lee, Isha Vaish, Tom Zhang"
+date: "2023-04-20"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+require(astsa)
+require(knitr)
+library(ggplot2)
+library(zoo)
+library(TSA)
+library(tidyverse)
+library(MuMIn)
+```
+
+
+# Part 1. Dataset Exploration
+
+```{r}
+# import the data
+vkospi <- read.csv('options_KR.csv')
+head(vkospi)
+```
+
+```{r}
+```
