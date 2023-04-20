@@ -40,3 +40,13 @@ vkospi <- ds$VKOSPI
 plot(kospi, type='l', col='red', main="KOSPI Time Series")
 plot(vkospi, type='l',col='blue', main = "VKOSPI Time Series")
 ```
+
+```{r}
+# Calculate Return 
+KOSPI200_yesterday <- lag(kospi, n = 1)
+return_array = (kospi-KOSPI200_yesterday) / KOSPI200_yesterday
+```
+
+```{r}
+plot(return_array, type='l', main='Return of KOSPI200')
+```
