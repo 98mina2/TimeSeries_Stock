@@ -24,9 +24,19 @@ library(MuMIn)
 
 ```{r}
 # import the data
-vkospi <- read.csv('options_KR.csv')
-head(vkospi)
+ds <- read.csv('options_KR.csv')
+head(ds)
 ```
 
 ```{r}
+# check the trend of KOSPI 200 & VCOSPI
+kospi <- ds$KOSPI200
+times <- as.Date(ds$Date)
+vkospi <- ds$VKOSPI
+```
+
+
+```{r}
+plot(kospi, type='l', col='red', main="KOSPI Time Series")
+plot(vkospi, type='l',col='blue', main = "VKOSPI Time Series")
 ```
