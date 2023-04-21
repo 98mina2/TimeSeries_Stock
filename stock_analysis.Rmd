@@ -37,8 +37,27 @@ vkospi <- ds$VKOSPI
 
 
 ```{r}
+# check the trend of KOSPI 200 & VCOSPI
+kospi <- ds$KOSPI200
+times <- as.Date(ds$Date)
+vkospi <- ds$VKOSPI
+```
+
+
+```{r}
+# Plot original Times Series of KOSPI & VKOSPI
 plot(kospi, type='l', col='red', main="KOSPI Time Series")
 plot(vkospi, type='l',col='blue', main = "VKOSPI Time Series")
+```
+
+```{r}
+# try Detrending & Differencing the data
+# take the log
+log_kospi <- log(kospi)
+# take the residual and plot
+check <- residuals(lm(log_kospi ~seq_along(log_kospi)))
+plot(check, type='l', col='green', main='Detrended log of KOSPI')
+plot(diff(check), type='l', col='blue',main='Differenced log of KOSPI')
 ```
 
 ```{r}
@@ -48,5 +67,6 @@ return_array = (kospi-KOSPI200_yesterday) / KOSPI200_yesterday
 ```
 
 ```{r}
+# This matches the differenced dataset
 plot(return_array, type='l', main='Return of KOSPI200')
 ```
