@@ -70,3 +70,40 @@ return_array = (kospi-KOSPI200_yesterday) / KOSPI200_yesterday
 # This matches the differenced dataset
 plot(return_array, type='l', main='Return of KOSPI200')
 ```
+
+
+
+```{r}
+Yt <- diff(check)
+
+# Create the ACF plot of Yt
+acf(Yt,  main = "ACF of Yt")
+
+# Create the PACF plot of Yt
+pacf(Yt,  main = "PACF of Yt")
+
+# Create the EACF plot of Yt
+eacf(Yt)
+```
+
+```{r}
+# Perform the McLeod-Li test
+# Compute squared returns
+McLeod.Li.test(y=Yt)
+```
+
+
+```{r}
+# Plot autocorrelation and partial autocorrelation of squared returns
+r.Yt <- Yt^2
+acf(r.Yt, lag.max = 30, main = "ACF of Squared Returns")
+pacf(r.Yt, lag.max = 30, main = "PACF of Squared Returns")
+```
+
+
+```{r}
+eacf(r.Yt)
+eacf(abs(Yt))
+```
+
+
