@@ -1844,7 +1844,7 @@ egarch_model11</code></pre>
 ## 4    50     154.8    6.604e-13
 ## 
 ## 
-## Elapsed time : 0.1025829</code></pre>
+## Elapsed time : 0.09204006</code></pre>
 <pre class="r"><code>#EGARCH with t distribution
 #Specify EGARCH models:
 spec = ugarchspec(variance.model=list(model=&quot;eGARCH&quot;,garchOrder=c(1,1)), mean.model=list(armaOrder=c(0,0)),distribution.model=&quot;std&quot;)
@@ -1949,7 +1949,7 @@ egarch_model11.t</code></pre>
 ## 4    50     98.57    3.487e-05
 ## 
 ## 
-## Elapsed time : 0.2008228</code></pre>
+## Elapsed time : 0.1864219</code></pre>
 <p>For both of the EGARCH models, we may notice that leverage effect
 present because alpha1 is smaller than 0.</p>
 <pre class="r"><code>##QQ-plot for fitted GARCH Model with t distribution
@@ -1973,7 +1973,7 @@ the sum of the AR and MA coefficients is constrained to equal one
 (thereby exhibiting persistence). This restriction implies that the
 shocks to the volatility have a permanent effect, and that the
 volatility process is non-stationary.</p>
-<p>As as result, IGARCH is specifically designed to capture
+<p>As a result, IGARCH is specifically designed to capture
 non-stationary processes, with the persistence of the volatility shocks
 lasting indefinitely; therefore, it might provide better forecasts for
 non-stationary volatilities.</p>
@@ -2082,11 +2082,22 @@ igarch_11</code></pre>
 ## 4    50     196.9    1.241e-19
 ## 
 ## 
-## Elapsed time : 0.04041481</code></pre>
+## Elapsed time : 0.03450894</code></pre>
 <p>Interpreting output:</p>
-<p>Notably, the alpha1 coefficient is statistically significant with a
-p-value of 0.00000, indicating that past volatility has a significant
-impact on current volatility.</p>
+<p>The fitted model equation is as follows</p>
+<p><span class="math display">\[
+\begin{equation}
+\begin{aligned}
+X_t &amp;= 0.000134 + \epsilon_t \\
+\epsilon_t &amp;= \sigma_t z_t \\
+\sigma_t^2 &amp;= 0 + 0.046422 \cdot \epsilon_{t-1}^2 + 0.953578 \cdot
+\sigma_{t-1}^2
+\end{aligned}
+\end{equation}
+\]</span></p>
+<p>Further, notably, the alpha1 coefficient is statistically significant
+with a p-value of 0.00000, indicating that past volatility has a
+significant impact on current volatility.</p>
 <p>The Ljung-Box test results for the standardized residuals and squared
 residuals indicate no significant serial correlation, suggesting that
 the model has adequately captured the autocorrelation structure in the
@@ -2202,8 +2213,20 @@ igarch_11.t</code></pre>
 ## 4    50     92.56    0.0001693
 ## 
 ## 
-## Elapsed time : 0.1941581</code></pre>
+## Elapsed time : 0.09264898</code></pre>
 <p>Interpreting output:</p>
+<p>The fitted model is as follows:</p>
+<p><span class="math display">\[
+\begin{equation}
+\begin{aligned}
+X_t &amp;= 0.000356 + \epsilon_t \\
+\epsilon_t &amp;= \sigma_t z_t \\
+\sigma_t^2 &amp;= 0 + 0.046147 \cdot \epsilon_{t-1}^2 + 0.953853 \cdot
+\sigma_{t-1}^2 \\
+z_t &amp;\sim t(5.235451)
+\end{aligned}
+\end{equation}
+\]</span></p>
 <p>We observe that parameters mu, alpha1, and shape are all
 statistically significant, suggesting that the t-distribution assumption
 improves the model fit.</p>

@@ -172,7 +172,7 @@ The EGARCH-t distribution QQ-plot seems to be more straight. However, we can try
 
 The IGARCH (Integrated Generalized Autoregressive Conditional Heteroskedasticity) model is a special case of the GARCH model, where the sum of the AR and MA coefficients is constrained to equal one (thereby exhibiting persistence). This restriction implies that the shocks to the volatility have a permanent effect, and that the volatility process is non-stationary.
 
-As as result, IGARCH is specifically designed to capture non-stationary processes, with the persistence of the volatility shocks lasting indefinitely; therefore, it might provide better forecasts for non-stationary volatilities.
+As a result, IGARCH is specifically designed to capture non-stationary processes, with the persistence of the volatility shocks lasting indefinitely; therefore, it might provide better forecasts for non-stationary volatilities.
 
 Another advantage to using IGARCH is that they have fewer parameters due to the constraint, which can lead to simpler models and potentially more stable parameter estimates.
 
@@ -193,7 +193,19 @@ igarch_11
 
 Interpreting output:
 
-Notably, the alpha1 coefficient is statistically significant with a p-value of 0.00000, indicating that past volatility has a significant impact on current volatility.
+The fitted model equation is as follows
+
+$$
+\begin{equation}
+\begin{aligned}
+X_t &= 0.000134 + \epsilon_t \\
+\epsilon_t &= \sigma_t z_t \\
+\sigma_t^2 &= 0 + 0.046422 \cdot \epsilon_{t-1}^2 + 0.953578 \cdot \sigma_{t-1}^2
+\end{aligned}
+\end{equation}
+$$
+
+Further, notably, the alpha1 coefficient is statistically significant with a p-value of 0.00000, indicating that past volatility has a significant impact on current volatility.
 
 The Ljung-Box test results for the standardized residuals and squared residuals indicate no significant serial correlation, suggesting that the model has adequately captured the autocorrelation structure in the returns and volatility.
 
@@ -215,6 +227,19 @@ igarch_11.t
 ```
 
 Interpreting output:
+
+The fitted model is as follows:
+
+$$
+\begin{equation}
+\begin{aligned}
+X_t &= 0.000356 + \epsilon_t \\
+\epsilon_t &= \sigma_t z_t \\
+\sigma_t^2 &= 0 + 0.046147 \cdot \epsilon_{t-1}^2 + 0.953853 \cdot \sigma_{t-1}^2 \\
+z_t &\sim t(5.235451)
+\end{aligned}
+\end{equation}
+$$
 
 We observe that parameters mu, alpha1, and shape are all statistically significant, suggesting that the t-distribution assumption improves the model fit.
 
