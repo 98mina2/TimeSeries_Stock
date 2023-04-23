@@ -3,8 +3,16 @@ title: "STAT 131 Final Project"
 author: "Mina Lee, Isha Vaish, Tom Zhang"
 date: "2023-04-20"
 output:
-  pdf_document: default
-  html_document: default
+  html_document:
+    toc: yes
+    toc_float: yes
+    toc_collapsed: yes
+    toc_depth: 3
+    number_sections: no
+    theme: united
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
 ---
 
 ```{r setup, include=FALSE}
@@ -17,11 +25,12 @@ library(zoo)
 library(TSA)
 library(tidyverse)
 library(MuMIn)
+library(tseries)
 library(rugarch)
 ```
 
 
-# Part 1. Dataset Exploration
+# Part 1: Dataset Exploration
 The goal of our project is to predict Korean Stock Market Volatility (VKOSPI) which is equivalent to the VIX in the United States. We will do this using the Options in Korean Stock Market Kaggle Dataset that can be found <a href=https://www.kaggle.com/datasets/ninetyninenewton/vkospi>here</a>. 
 
 We begin by loading in the data set...
@@ -55,7 +64,7 @@ While we seem to have removed the linearly increasing trend, there appears to be
 plot(diff(detrended_kospi), type='l', col='red',main='Differenced Residual(log(KOSPI))', ylab = "Differenced Residual(log(KOSPI))")
 ```
 
-This looks so much better! We seem to have removed the lienar trend and seasonality! The series looks a lot more stationary now.
+This looks so much better! We seem to have removed the linear trend and seasonality! The series looks a lot more stationary now.
 
 Let's check if we calculated the returns correctly (i.e. pre-processed KOSPI correctly). The below formula was found [INSERT SOURCE HERE] and is used to calculate the returns given the Korean blue chip index (KOSPI).
 ```{r}
@@ -97,7 +106,6 @@ eacf(kospi_returns)
 ```
 Based on the EACF plot, let's try a GARCH(1,1) model...
 ```{r}
-library(tseries)
 model1<- garch(x=kospi_returns, order = c(1,1))
 summary(model1)
 ```
@@ -119,7 +127,7 @@ plot(vkospi, type = 'l', col = 'blue', ylab = 'VKOSPI')
 
 We can see that there is some similarity in trend between the volatility estimated by our model and the actual volatility. For example, there is a very noticeable peak near index 500 in the estimated volatility as there is in the actual volatility. Let's see if the other models do better...
 
-## Model 2 - EGARCH?
+## Model 2 - EGARCH
 
 EGARCH (Exponential Generalized Autoregressive Conditional Heteroskedasticity) is an extension of the GARCH (Generalized Autoregressive Conditional Heteroskedasticity) model that allows for asymmetric volatility. The EGARCH model is specified in terms of the logarithm of the conditional variance, which allows for the conditional variance to be negative. The EGARCH model also includes an exponential term, which helps to capture the long-term effects of volatility shocks. The main difference between the EGARCH and GARCH models is that the EGARCH model allows for asymmetric volatility effects, while the GARCH model assumes that volatility responds symmetrically to positive and negative shocks.
 
@@ -160,7 +168,122 @@ plot(egarch_model11.t, which=9)
 ```
 The EGARCH-t distribution QQ-plot seems to be more straight. However, we can try to estimate EGARCH with a skewed t distribution to improve our results.
 
-## Model 3 - IGARCH?
+## Model 3 - IGARCH
 
+The IGARCH (Integrated Generalized Autoregressive Conditional Heteroskedasticity) model is a special case of the GARCH model, where the sum of the AR and MA coefficients is constrained to equal one (thereby exhibiting persistence). This restriction implies that the shocks to the volatility have a permanent effect, and that the volatility process is non-stationary.
 
+As as result, IGARCH is specifically designed to capture non-stationary processes, with the persistence of the volatility shocks lasting indefinitely; therefore, it might provide better forecasts for non-stationary volatilities.
+
+Another advantage to using IGARCH is that they have fewer parameters due to the constraint, which can lead to simpler models and potentially more stable parameter estimates.
+
+Now, we fit an IGARCH(1, 1) model on the returns. The distribution of the standardized residuals is assumed to be normal.
+
+```{r}
+# model specifications
+spec <- ugarchspec(
+  variance.model = list(model = "iGARCH", garchOrder = c(1, 1)),
+  mean.model = list(armaOrder = c(0, 0), include.mean = TRUE),
+  distribution.model = "norm"
+)
+
+# fit model
+igarch_11 <- ugarchfit(spec, data = kospi_returns)
+igarch_11
+```
+
+Interpreting output:
+
+Notably, the alpha1 coefficient is statistically significant with a p-value of 0.00000, indicating that past volatility has a significant impact on current volatility.
+
+The Ljung-Box test results for the standardized residuals and squared residuals indicate no significant serial correlation, suggesting that the model has adequately captured the autocorrelation structure in the returns and volatility.
+
+The adjusted Pearson goodness-of-fit test assesses the fit of the model's assumed distribution to the data. The p-values are very small, indicating that the normal distribution may not be an appropriate assumption for the standardized residuals. This might suggest considering alternative distribution assumptions, such as the Student's t-distribution or the Generalized Error Distribution.
+
+Next, we attempt fitting the same model but with a t-distribution assumption:
+
+```{r}
+# model specifications
+spec <- ugarchspec(
+  variance.model = list(model = "iGARCH", garchOrder = c(1, 1)),
+  mean.model = list(armaOrder = c(0, 0), include.mean = TRUE),
+  distribution.model = "std"
+)
+
+# fit model
+igarch_11.t <- ugarchfit(spec, data = kospi_returns)
+igarch_11.t
+```
+
+Interpreting output:
+
+We observe that parameters mu, alpha1, and shape are all statistically significant, suggesting that the t-distribution assumption improves the model fit.
+
+The Ljung-Box test results for the standardized residuals and squared residuals indicate no significant serial correlation, suggesting that the model has adequately captured the autocorrelation structure in the returns and volatility.
+
+The adjusted Pearson goodness-of-fit test p-values are smaller than those for the normal distribution assumption, but still significant, indicating that the t-distribution provides a better fit than the normal distribution, but there might still be room for improvement.
+
+Finally, to visualize the comparison, we plot their QQ-plots:
+
+```{r}
+par(mfrow=c(1,2))
+plot(igarch_11, which=9)
+plot(igarch_11.t, which=9)
+```
+
+# Part 3: Model Comparison
+
+Previously, we fit a few models on predicting volatility. We have GARCH and its variants EGARCH and IGARCH. We are now interested in determining which is the best. To accomplish this, we can use metrics such as the Akaike Information Criterion (AIC) and the Bayesian Information Criterion (BIC), as well as the log-likelihood of each model. The model with the lowest AIC and BIC values and the highest log-likelihood is generally considered the best fitting model.
+
+```{r}
+# a helper function
+extract_criteria <- function(fit) {
+  aic <- tryCatch({
+    infocriteria(fit)[1]
+  }, error = function(cond) {
+    log_likelihood <- as.numeric(logLik(fit))
+    n_params <- length(coef(fit))
+    -2 * log_likelihood + 2 * n_params
+  })
+
+  bic <- tryCatch({
+    infocriteria(fit)[2]
+  }, error = function(cond) {
+    log_likelihood <- as.numeric(logLik(fit))
+    n_params <- length(coef(fit))
+    -2 * log_likelihood + n_params * log(length(kospi_returns))
+  })
+
+  loglik <- tryCatch({
+    likelihood(fit)
+  }, error = function(cond) {
+    as.numeric(logLik(fit))
+  })
+  return(c(aic, bic, loglik))
+}
+
+# get criteria from each model
+criteria <- lapply(list(model1, egarch_model11.t, igarch_11.t), extract_criteria)
+
+# store results
+model_comparison <- data.frame(Model = c("GARCH", "EGARCH", "IGARCH"),
+                               AIC = sapply(criteria, "[", 1),
+                               BIC = sapply(criteria, "[", 2),
+                               LogLik = sapply(criteria, "[", 3))
+model_comparison
+
+# determine the best model
+best_model_aic <- model_comparison[which.min(model_comparison$AIC), "Model"]
+best_model_bic <- model_comparison[which.min(model_comparison$BIC), "Model"]
+best_model_loglik <- model_comparison[which.max(model_comparison$LogLik), "Model"]
+
+cat("Best model based on AIC:", best_model_aic, "\n")
+cat("Best model based on BIC:", best_model_bic, "\n")
+cat("Best model based on log-likelihood:", best_model_loglik, "\n")
+```
+
+Observations:
+
+We note that the AIC and BIC of GARCH are much lower than those of EGARCH and IGARCH. This could possibly be explained by the model complexity. Notice that while EGARCH and IGARCH can capture certain features of the data that GARCH models cannot (such as asymmetric volatility and integrated behavior), they might introduce additional complexity that is not justified by the improvement in the likelihood. If the extra parameters in EGARCH and IGARCH models do not provide a substantial increase in the likelihood, the AIC and BIC values will penalize these models for the additional complexity, resulting in higher values compared to the GARCH(1,1) model.
+
+Hence, even though EGARCH maximizes log-likelihood, GARCH still beats it on both AIC and BIC. Thus, we conclude that GARCH(1, 1) is our best model.
 
