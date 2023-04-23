@@ -21,89 +21,106 @@ library(MuMIn)
 
 
 # Part 1. Dataset Exploration
+The goal of our project is to predict Korean Stock Market Volatility (VKOSPI) which is equivalent to the VIX in the United States. We will do this using the Options in Korean Stock Market Kaggle Dataset that can be found <a href=https://www.kaggle.com/datasets/ninetyninenewton/vkospi>here</a>. 
 
+We begin by loading in the data set...
 ```{r}
 # import the data
 ds <- read.csv('options_KR.csv')
 head(ds)
 ```
 
+Next, let's take a look at the KOSPI 200 and VKSOPI trace plots...
 ```{r}
-# check the trend of KOSPI 200 & VCOSPI
-kospi <- ds$KOSPI200
-times <- as.Date(ds$Date)
-vkospi <- ds$VKOSPI
+time <- as.Date(ds$Date) 
+kospi <- ts(ds$KOSPI200) #daily returns
+vkospi <- ts(ds$VKOSPI) #volatility
+
+plot(time, kospi, type='l', col='red', main="KOSPI Time Series")
+plot(time, vkospi, type='l',col='blue', main = "VKOSPI Time Series")
 ```
 
+From the above trace plots, we notice a trend in both the KOSPI (increasing trend) and VKOSPI (decreasing trend). Both timeseries also don't seem to be stationary. First, let's take the log of KOSPI and try de-trending it. 
 
 ```{r}
-# check the trend of KOSPI 200 & VCOSPI
-kospi <- ds$KOSPI200
-times <- as.Date(ds$Date)
-vkospi <- ds$VKOSPI
+# pre-processing KOSPI
+log_kospi = log(kospi) #take log
+detrended_kospi = residuals(lm(log_kospi ~ seq_along(log_kospi))) #de-trend
+plot(time,detrended_kospi, type= 'l', col = 'Red', main = "De-trended log KOSPI", ylab = "residuals(log(KOSPI))")
 ```
 
-
+While we seem to have removed the linearly increasing trend, there appears to be apparent seasonality. Let's try differencing with lag 1.
 ```{r}
-# Plot original Times Series of KOSPI & VKOSPI
-plot(kospi, type='l', col='red', main="KOSPI Time Series")
-plot(vkospi, type='l',col='blue', main = "VKOSPI Time Series")
+plot(diff(detrended_kospi), type='l', col='red',main='Differenced Residual(log(KOSPI))', ylab = "Differenced Residual(log(KOSPI))")
 ```
 
-```{r}
-# try Detrending & Differencing the data
-# take the log
-log_kospi <- log(kospi)
-# take the residual and plot
-check <- residuals(lm(log_kospi ~seq_along(log_kospi)))
-plot(check, type='l', col='green', main='Detrended log of KOSPI')
-plot(diff(check), type='l', col='blue',main='Differenced log of KOSPI')
-```
+This looks so much better! We seem to have removed the lienar trend and seasonality! The series looks a lot more stationary now.
 
+Let's check if we calculated the returns correctly (i.e. pre-processed KOSPI correctly). The below formula was found [INSERT SOURCE HERE] and is used to calculate the returns given the Korean blue chip index (KOSPI).
 ```{r}
-# Calculate Return 
-KOSPI200_yesterday <- lag(kospi, n = 1)
+# Double checking our pre-processing math and seeing if it matches the formula!
+KOSPI200_yesterday <- lag(ds$KOSPI200, n = 1)
 return_array = (kospi-KOSPI200_yesterday) / KOSPI200_yesterday
-```
-
-```{r}
-# This matches the differenced dataset
 plot(return_array, type='l', main='Return of KOSPI200')
 ```
 
-
-
+It matches! We will know refer to our differenced(residual(log(KOSPI))) series as our Return. Let's check the mean of our returns...
 ```{r}
-Yt <- diff(check)
-
-# Create the ACF plot of Yt
-acf(Yt,  main = "ACF of Yt")
-
-# Create the PACF plot of Yt
-pacf(Yt,  main = "PACF of Yt")
-
-# Create the EACF plot of Yt
-eacf(Yt)
+kospi_returns = diff(detrended_kospi)
+mean(kospi_returns)
 ```
 
+Great, the mean of our returns doesn't seem to be significantly far from 0! Let's check the ACF and PACF plots and see if the returns are somewhat uncorrelated over time...
 ```{r}
-# Perform the McLeod-Li test
-# Compute squared returns
-McLeod.Li.test(y=Yt)
+acf(kospi_returns)
+pacf(kospi_returns)
 ```
 
+There doesn't appear to be any obvious pattern in the ACF or PACF plots. Moreover, the majority of the correlations are not significant. We can conclude that our returns are indeed somewhat uncorrelated over time! Now, let's see if we can detect some ARCH effects...
 
 ```{r}
-# Plot autocorrelation and partial autocorrelation of squared returns
-r.Yt <- Yt^2
-acf(r.Yt, lag.max = 30, main = "ACF of Squared Returns")
-pacf(r.Yt, lag.max = 30, main = "PACF of Squared Returns")
+McLeod.Li.test(y=kospi_returns, main = "McLeod Li for KOSPI Returns")
 ```
 
+All of our p-values are significant! There are definitely ARCH effect present. Let's move on to some modeling!
+
+# Part 2: Modeling
+
+## Model 1 - GARCH
+
+First, let's try fitting a GARCH model. Below we plot the ACF, PACF of the squared returns and the EACF to help us decide the order of our GARCH model...
+```{r}
+acf(kospi_returns^2, main = "ACF of Squared Returns")
+pacf(kospi_returns^2, main = "PACF of Squared Returns")
+eacf(kospi_returns)
+```
+Based on the EACF plot, let's try a GARCH(1,1) model...
+```{r}
+library(tseries)
+model1<- garch(x=kospi_returns, order = c(1,1))
+summary(model1)
+```
+
+The estimated model is $x_t = \sigma_t\epsilon_t$ where $\sigma_t^2 = 1.450e^{-6} + 4.535e^{-2} X_{t-1}^2+9.386e^{-1}\sigma_{t-1}^2$. As we can see from the summary output above, all of our model coefficients are significant at the .05 significance level (good). Moreover, our model passes the Box-Ljung test which shows that our squared residuals are not significantly correlated (good). However, our model fails that Jarque Bera test meaning our residuals are not normally distributed (bad). We plot the QQPLot of the residuals below...
 
 ```{r}
-eacf(r.Yt)
-eacf(abs(Yt))
+qqnorm(model1$residuals)
+qqline(model1$residuals)
 ```
+
+As we can see from the above QQPlot, are residuals are definitely not normal. This means we should try another model that can better fit the data and try to capture some of the non-normality in the residuals. Before we move on, lets plot the estimated conditional variance (i.e. volatility) estimated by the model and compare to the actual values (VKOSPI).
+```{r}
+plot((model1$fitted.values[,1])^2, type = 'l',  ylab = 'Estimated Conditional Variance' ) #estimated volatility
+```
+```{r}
+plot(vkospi, type = 'l', col = 'blue', ylab = 'VKOSPI')
+```
+
+We can see that there is some similarity in trend between the volatility estimated by our model and the actual volatility. For example, there is a very noticeable peak near index 500 in the estimated volatility as there is in the actual volatility. Let's see if the other models do better...
+
+## Model 2 - EGARCH?
+
+## Model 3 - IGARCH?
+
 
 
