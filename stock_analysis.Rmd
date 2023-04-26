@@ -117,21 +117,26 @@ qqnorm(model1$residuals)
 qqline(model1$residuals)
 ```
 
-As we can see from the above QQPlot, are residuals are definitely not normal. This means we should try another model that can better fit the data and try to capture some of the non-normality in the residuals. Before we move on, lets plot the estimated conditional variance (i.e. volatility) estimated by the model and compare to the actual values (VKOSPI).
+As we can see from the above QQPlot, are residuals are definitely not normal. This means we should try another model that can better fit the data and try to capture some of the non-normality in the residuals. Before we move on, lets plot the estimated conditional variance (i.e. volatility) estimated by the model and compare to the VKOSPI values.
 ```{r}
-plot((model1$fitted.values[,1])^2, type = 'l',  ylab = 'Estimated Conditional Variance' ) #estimated volatility
+plot(time[2:length(time)], (model1$fitted.values[,1])^2, type = 'l',  xlab = "time", ylab = 'Estimated Conditional Variance', main = "GARCH(1,1) Estimated Volatility" ) #estimated volatility
 ```
 ```{r}
-plot(vkospi, type = 'l', col = 'blue', ylab = 'VKOSPI')
+plot(time, vkospi, type = 'l', col = 'blue', ylab = 'VKOSPI')
 ```
 
-We can see that there is some similarity in trend between the volatility estimated by our model and the actual volatility. For example, there is a very noticeable peak near index 500 in the estimated volatility as there is in the actual volatility. Let's see if the other models do better...
+We can see that there is some similarity in trend between the volatility estimated by our model and the VKOSPI. For example, there is a very noticeable peak near 2012 in the estimated volatility as there is in the VKOSPI series. Below we plot the CCF plot of the estimated values from our model against the VKOSPI series. As we can see from the CCF plot, the estimated volatilities from our model are highly correlated with the VKOSPI series. Moreover, the peak of the plot occurs near (but not exactly at) lag 0 showing that our model does pretty well in estimating a similar volatility trend as found in the VKOSPI series. 
+
+```{r}
+estimated_values = (model1$fitted.values[,1])^2
+ccf(estimated_values[2:length(estimated_values)], vkospi[2:length(estimated_values)], main = "CFF of Estimated Volatilities and VKOSPI")
+```
 
 ## Model 2 - EGARCH
 
 EGARCH (Exponential Generalized Autoregressive Conditional Heteroskedasticity) is an extension of the GARCH (Generalized Autoregressive Conditional Heteroskedasticity) model that allows for asymmetric volatility. The EGARCH model is specified in terms of the logarithm of the conditional variance, which allows for the conditional variance to be negative. The EGARCH model also includes an exponential term, which helps to capture the long-term effects of volatility shocks. The main difference between the EGARCH and GARCH models is that the EGARCH model allows for asymmetric volatility effects, while the GARCH model assumes that volatility responds symmetrically to positive and negative shocks.
 
-
+Like we did in GARCH, we fitted an EGARCH(1, 1) model on the returns. The distribution of the standardized residuals is assumed to be normal.
 ```{r}
 #Specify EGARCH models
 egarch.spec <-  ugarchspec(variance.model=list(model="eGARCH",garchOrder=c(1,1)),
@@ -146,6 +151,8 @@ egarch_model11 <- ugarchfit(spec=egarch.spec, data = kospi_returns)
 egarch_model11
 ```
 
+The estimated model is $\epsilon_t=\sigma_tz_t$ where $z_t$ is standard Gaussian and $ln(\sigma_t^2) =-0.073 \frac{|-0.1699|+0.0796*(-0.1699)}{\sigma_{t-1}} + 0.98ln(\sigma_{t-1}^2)$. The alpha1 coefficient is statistically significant as its p-value is 0.00000, telling that past volatility has an impact on current volatility. Also, Weighted Ljung-Box Test on Standardized Residuals says no serial correlation meaning that the test found no significant evidence of autocorrelation in the standardized residuals up to a certain lag. In addition, the Adjusted Pearson Goodness-of-Fit Test returns a low number, meaning that the model does not fit the data well. Therefore, we will attempt on a new EGARCH model by alternating to t-distribution. 
+
 ```{r}
 #EGARCH with t distribution
 #Specify EGARCH models:
@@ -155,7 +162,10 @@ egarch_model11.t=ugarchfit(data=kospi_returns, spec=spec)
 ##summary of EGARCH fit
 egarch_model11.t
 ```
-For both of the EGARCH models, we may notice that leverage effect present because alpha1 is smaller than 0. 
+
+For t distribution model, the estimated model is $\epsilon_t=\sigma_tz_t$ where $ln(\sigma_t^2) = 0.0002 + -0.087 \frac{|-0.172|+0.088*(-0.172)}{\sigma_{t-1}} + 0.98ln(\sigma_{t-1}^2)$. The alpha1 coefficient is also statistically significant as its p-value is 0.00000, telling that past volatility has an impact on current volatility. Weighted Ljung-Box Test on Standardized Residuals also says no serial correlation meaning that the test found no significant evidence of autocorrelation in the standardized residuals up to a certain lag. In addition, even though the Adjusted Pearson Goodness-of-Fit Test is higher than that of the normal distribution, the number is still low so we shoudl conclude that the model does not fit the data well. 
+
+For both of the EGARCH models, we may notice that leverage effect presents because alpha1 is smaller than 0. 
 
 ```{r}
 ##QQ-plot for fitted GARCH Model with t distribution
@@ -166,7 +176,7 @@ plot(egarch_model11.t, which=8)
 plot(egarch_model11, which=9)
 plot(egarch_model11.t, which=9)
 ```
-The EGARCH-t distribution QQ-plot seems to be more straight. However, we can try to estimate EGARCH with a skewed t distribution to improve our results.
+Comparing between two different distributions of EGARCH, the EGARCH-t distribution QQ-plot seems to be more straight. However, we will try to estimate with IGARCH to check if it returns better results.
 
 ## Model 3 - IGARCH
 
